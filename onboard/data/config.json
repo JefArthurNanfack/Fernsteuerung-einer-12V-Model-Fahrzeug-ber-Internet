@@ -1,0 +1,8 @@
+{
+  "host": "4119cf60859f4b90.p050.r3proxy.com",
+
+  "port_udp": 5005,
+
+  "mqtt_broker": "mqtt://localhost:1883",
+  "mqtt_ws": "ws://100.122.152.48:9001"
+}

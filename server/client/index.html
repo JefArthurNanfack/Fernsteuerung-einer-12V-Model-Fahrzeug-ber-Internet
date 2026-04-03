@@ -1,0 +1,262 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fahrzeugsteuerung</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e90ff" />
+</head>
+
+<body>
+  <div class="main-container">
+
+    <!-- ======================= -->
+    <!-- Seitenleiste -->
+    <!-- ======================= -->
+    <div class="sidebar">
+      <h2>Menü</h2>
+
+    <div class="menu">
+     <p onclick="location.reload()">🔄 Neu laden</p>
+     <!-- Kamera 1 -->
+    <div class="camera-buttons">
+     <button id="btn-cam1-start" class="btn-start"   onclick="startCamera()">START Kamera</button>
+     <button class="btn-stop" onclick="stopCamera()">STOP Kamera</button>
+    </div>
+
+     <!-- Kamera 2 -->
+    <div class="camera-buttons">
+     <button id="btn-cam2-start" class="btn-start" onclick="startCamera2()">START Kamera2</button>
+     <button class="btn-stop" onclick="stopCamera2()">STOP Kamera2</button>
+    </div>
+
+    </div>
+
+
+      <!-- Fahrzeugstatus -->
+      <div class="car-menu">
+        <p id="car_status">Status: <span class="red">Offline</span></p>
+        <button id="car_start">Start</button>
+      </div>
+
+      <!-- Speed -->
+      <div class="speed-control">
+        <label for="speedSlider">Geschwindigkeit</label>
+        <input type="range" id="speedSlider" min="0" max="100" step="5" value="50" />
+        <p id="speedValue">50%</p>
+      </div>
+
+      <!-- Steuerungsbuttons -->
+      <div class="control-buttons">
+        <button data-cmd="forward">↑</button><br />
+        <button data-cmd="left">←</button>
+        <button data-cmd="stop">■</button>
+        <button data-cmd="right">→</button><br />
+        <button data-cmd="backward">↓</button>
+      </div>
+    </div>
+
+    <!-- ======================= -->
+    <!-- Videoanzeige -->
+    <!-- ======================= -->
+    <div id="display">
+      <div id="overlay">
+        <p id="stat_fps">FPS: 0</p>
+        <p id="stat_signal">Signal: -</p>
+        <p id="stat_rate">Rate: -</p>
+      </div>
+
+      <!-- WICHTIG: Video-Stream bleibt leer, src wird per JS gesetzt -->
+      <img 
+        id="video-stream" 
+        alt="Live Video"
+        src="http://100.122.152.48:8082/?action=stream"
+        style="
+         width: 100%;
+         height: 100%;
+         object-fit: contain;
+         background-color: black;
+         border-radius: 10px;
+        "
+      >
+
+      <p id="alert"></p>
+    </div>
+  </div>
+
+  <!-- ======================= -->
+  <!-- Remote.it + Local Logic -->
+  <!-- ======================= -->
+
+ <!-- ======================= -->
+<!-- MQTT + Steuerungslogik -->
+<!-- ======================= -->
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<script>
+/* ============================================================
+   🌐 MQTT – Browser → Raspberry Pi (Steuerung)
+   ============================================================ */
+const MQTT_BROKER = "ws://100.122.152.48:9001"; // Tailscale-IP vom Pi
+const mqttClient = mqtt.connect(MQTT_BROKER);
+
+mqttClient.on("connect", () => {
+  console.log("✅ MQTT verbunden (Browser)");
+  document.getElementById("car_status").innerHTML =
+    'Status: <span class="green">MQTT Online</span>';
+});
+
+mqttClient.on("error", (err) => {
+  console.error("❌ MQTT Fehler:", err);
+});
+
+/* ============================================================
+   🚗 MQTT Publish-Funktionen
+   ============================================================ */
+function mqttSendSpeed(value) {
+  if (!mqttClient.connected) return;
+  mqttClient.publish("vehicle/speed", String(value));
+}
+
+function mqttSendDirection(cmd) {
+  if (!mqttClient.connected) return;
+  mqttClient.publish("vehicle/direction", cmd);
+}
+
+/* ============================================================
+   🎚 Speed Slider → MQTT
+   ============================================================ */
+const speedSlider = document.getElementById("speedSlider");
+const speedValue  = document.getElementById("speedValue");
+
+speedSlider.addEventListener("input", (e) => {
+  const value = parseInt(e.target.value);
+  speedValue.textContent = value + "%";
+  mqttSendSpeed(value);
+});
+
+
+/* ============================================================
+   📷 Node-RED Kamera Steuerung (HTTP)
+   ============================================================ */
+
+   // === Streams (NUR 1 Layout -> video-stream wird umgeschaltet) ===
+   const STREAM_CAM1 = "http://100.122.152.48:8080/?action=stream";
+  const STREAM_CAM2 = "http://100.122.152.48:8082/?action=stream";
+
+
+
+   // === Node-RED Endpunkte ===
+   const CAM1_START = "http://100.122.152.48:1880/camera/start";
+   const CAM1_STOP  = "http://100.122.152.48:1880/camera/stop";
+   const CAM2_START = "http://100.122.152.48:1880/camera2/start";
+   const CAM2_STOP  = "http://100.122.152.48:1880/camera2/stop";
+
+function setVideoStream(url) {
+  const img = document.getElementById("video-stream");
+
+  // 1) Verbindung wirklich schließen
+  img.src = "";
+  
+  // 2) kurz warten, dann neu verbinden (mit Cache-Buster)
+  setTimeout(() => {
+    const join = url.includes("?") ? "&" : "?";
+    img.src = url + join + "t=" + Date.now();
+  }, 150);
+}
+
+
+function clearVideoStream() {
+  const img = document.getElementById("video-stream");
+  img.src = "about:blank";
+}
+
+
+
+function showCameraMessage(text, color) {
+  const box = document.getElementById("alert");
+  box.textContent = text;
+  box.style.color = color;
+  box.style.fontWeight = "bold";
+}
+
+function startCamera() {
+  showCameraMessage("Kamera 1 ist AN (Kamera 2 wird gestoppt)...", "lime");
+
+  // 1) Kamera 2 stoppen (damit nur eine läuft)
+  fetch(CAM2_STOP, { method: "POST" }).catch(() => {});
+
+  // 2) Kamera 1 starten
+  fetch(CAM1_START, { method: "POST" })
+    .catch(() => {});
+
+  // 3) UI Stream auf Kamera 1 umstellen
+  setVideoStream(STREAM_CAM1);
+}
+
+
+function stopCamera() {
+  showCameraMessage("⛔ Kamera 1 ist AUS", "red");
+
+  fetch(CAM1_STOP, { method: "POST" }).catch(() => {});
+  clearVideoStream();
+}
+
+function startCamera2() {
+  showCameraMessage("Kamera 2 ist AN (Kamera 1 wird gestoppt)...", "lime");
+
+  // 1) Kamera 1 stoppen
+  fetch(CAM1_STOP, { method: "POST" }).catch(() => {});
+
+  // 2) Kamera 2 starten
+  fetch(CAM2_START, { method: "POST" })
+    .catch(() => {});
+
+  // 3) UI Stream auf Kamera 2 umstellen
+  setVideoStream(STREAM_CAM2);
+}
+
+function stopCamera2() {
+  showCameraMessage("⛔ Kamera 2 ist AUS", "red");
+
+  fetch(CAM2_STOP, { method: "POST" }).catch(() => {});
+  clearVideoStream();
+}
+
+</script>
+
+
+<!-- MQTT library already included above; no need to load again -->
+
+<!-- 2️⃣ DEIN MQTT Code -->
+<script>
+mqttClient.on("connect", () => {
+    console.log("✅ MQTT Telemetry connected");
+    mqttClient.subscribe("vehicle/telemetry/#");
+});
+
+mqttClient.on("message", (topic, message) => {
+    const value = message.toString();
+
+    if (topic === "vehicle/telemetry/fps") {
+        document.getElementById("stat_fps").textContent = "FPS: " + value;
+    }
+
+    if (topic === "vehicle/telemetry/rate") {
+        document.getElementById("stat_rate").textContent = "Rate: " + value + " kB/s";
+    }
+
+    if (topic === "vehicle/telemetry/signal") {
+        document.getElementById("stat_signal").textContent = "Signal: " + value;
+    }
+});
+</script>
+
+<script src="./joystick.js"></script>
+</body>
+</html>

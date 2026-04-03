@@ -1,0 +1,626 @@
+[
+    {
+        "id": "usb-flow",
+        "type": "tab",
+        "label": "USB Camera Stream",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "btn-start",
+        "type": "ui_button",
+        "z": "usb-flow",
+        "name": "Start Camera",
+        "group": "usb-group",
+        "order": 1,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "Start Camera",
+        "tooltip": "",
+        "color": "white",
+        "bgcolor": "green",
+        "className": "",
+        "icon": "play_arrow",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "exec-start"
+            ]
+        ]
+    },
+    {
+        "id": "btn-stop",
+        "type": "ui_button",
+        "z": "usb-flow",
+        "name": "Stop Camera",
+        "group": "usb-group",
+        "order": 2,
+        "width": 3,
+        "height": 1,
+        "label": "Stop Camera",
+        "color": "white",
+        "bgcolor": "red",
+        "icon": "stop",
+        "payload": "",
+        "payloadType": "str",
+        "x": 130,
+        "y": 140,
+        "wires": [
+            [
+                "exec-stop"
+            ]
+        ]
+    },
+    {
+        "id": "exec-start",
+        "type": "exec",
+        "z": "usb-flow",
+        "command": "/usr/local/bin/start_usb_cam.sh",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": 0,
+        "winHide": false,
+        "name": "Start USB Camera",
+        "x": 350,
+        "y": 80,
+        "wires": [
+            [
+                "da778a9423180ed2"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "exec-stop",
+        "type": "exec",
+        "z": "usb-flow",
+        "command": "pkill mjpg_streamer",
+        "addpay": false,
+        "append": "",
+        "useSpawn": "false",
+        "timer": 0,
+        "winHide": false,
+        "name": "Stop USB Camera",
+        "x": 350,
+        "y": 140,
+        "wires": [
+            [
+                "a14d56bfad89b763"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "set-url",
+        "type": "inject",
+        "z": "usb-flow",
+        "name": "Start Stream",
+        "props": [
+            {
+                "p": "url",
+                "v": "http://127.0.0.1:8080/?action=stream",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 130,
+        "y": 260,
+        "wires": [
+            [
+                "decoder"
+            ]
+        ]
+    },
+    {
+        "id": "decoder",
+        "type": "multipart-decoder",
+        "z": "usb-flow",
+        "name": "MJPEG Decoder",
+        "ret": "bin",
+        "url": "http://127.0.0.1:8080/?action=stream",
+        "tls": "",
+        "authentication": "none",
+        "delay": 0,
+        "maximum": 500000,
+        "blockSize": 1,
+        "enableLog": "off",
+        "x": 350,
+        "y": 200,
+        "wires": [
+            [
+                "base64"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "ui-image",
+        "type": "ui_template",
+        "z": "usb-flow",
+        "group": "usb-group",
+        "name": "Video Display",
+        "order": 3,
+        "width": 6,
+        "height": 6,
+        "format": "<img width=\"100%\" src=\"data:image/jpeg;base64,{{msg.payload}}\" />",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": false,
+        "templateScope": "local",
+        "className": "",
+        "x": 980,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "base64",
+        "type": "base64",
+        "z": "usb-flow",
+        "name": "Encode Base64",
+        "action": "",
+        "property": "payload",
+        "x": 680,
+        "y": 220,
+        "wires": [
+            [
+                "ui-image",
+                "d1b103876fd765b7"
+            ]
+        ]
+    },
+    {
+        "id": "d1b103876fd765b7",
+        "type": "websocket out",
+        "z": "usb-flow",
+        "name": "Video Stream OUT",
+        "server": "259d825a9e473181",
+        "client": "",
+        "x": 970,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "47d76585010f90cd",
+        "type": "mqtt out",
+        "z": "usb-flow",
+        "name": "MQTT Out",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "bc2309cc1f19922b",
+        "x": 1050,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "569bbc79d0f4a270",
+        "type": "http in",
+        "z": "usb-flow",
+        "name": "HTTP Camera Start",
+        "url": "/camera/start",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 40,
+        "wires": [
+            [
+                "exec-start"
+            ]
+        ]
+    },
+    {
+        "id": "973c88205c44517d",
+        "type": "http in",
+        "z": "usb-flow",
+        "name": "HTTP Camera Stop",
+        "url": "/camera/stop",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 180,
+        "wires": [
+            [
+                "exec-stop"
+            ]
+        ]
+    },
+    {
+        "id": "da778a9423180ed2",
+        "type": "http response",
+        "z": "usb-flow",
+        "name": "http response",
+        "statusCode": "200",
+        "headers": {},
+        "x": 680,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "a14d56bfad89b763",
+        "type": "http response",
+        "z": "usb-flow",
+        "name": "http response",
+        "statusCode": "200",
+        "headers": {},
+        "x": 680,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "8130d45d8a0fb71f",
+        "type": "function",
+        "z": "usb-flow",
+        "name": "rate_publish",
+        "func": "\nconst rate = Math.floor(300 + Math.random() * 500);\n\nmsg.topic = \"vehicle/telemetry/rate\";\nmsg.payload = String(rate);\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 360,
+        "wires": [
+            [
+                "47d76585010f90cd",
+                "c61e543e3d5bf9ca"
+            ]
+        ]
+    },
+    {
+        "id": "61dab9bffc8b5cfc",
+        "type": "function",
+        "z": "usb-flow",
+        "name": "signal_publish",
+        "func": "\nconst ok = Math.random() > 0.1;\n\nmsg.topic = \"vehicle/telemetry/signal\";\nmsg.payload = ok ? \"OK\" : \"LOSS\";\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 440,
+        "wires": [
+            [
+                "47d76585010f90cd",
+                "c61e543e3d5bf9ca"
+            ]
+        ]
+    },
+    {
+        "id": "579dfcfa8be3bf4f",
+        "type": "function",
+        "z": "usb-flow",
+        "name": "fps_publish",
+        "func": "\nconst fps = Math.floor(24 + Math.random() * 6);\n\nmsg.topic = \"vehicle/telemetry/fps\";\nmsg.payload = String(fps);\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 300,
+        "wires": [
+            [
+                "47d76585010f90cd",
+                "c61e543e3d5bf9ca"
+            ]
+        ]
+    },
+    {
+        "id": "58984611e4d10734",
+        "type": "exec",
+        "z": "usb-flow",
+        "command": "ping -c 1 8.8.8.8",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Exec Node ",
+        "x": 370,
+        "y": 420,
+        "wires": [
+            [
+                "61dab9bffc8b5cfc"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "440d7b16f7d88136",
+        "type": "inject",
+        "z": "usb-flow",
+        "name": "telemetry_tick",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "1",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 340,
+        "wires": [
+            [
+                "579dfcfa8be3bf4f",
+                "8130d45d8a0fb71f",
+                "58984611e4d10734"
+            ]
+        ]
+    },
+    {
+        "id": "553880a7b23ad5f6",
+        "type": "exec",
+        "z": "usb-flow",
+        "command": "/usr/local/bin/start_cam2_base64.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "true",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Exec Node Start Kamera 2",
+        "x": 520,
+        "y": 520,
+        "wires": [
+            [
+                "97fc3e370d169d51"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "2016f4513c91c999",
+        "type": "exec",
+        "z": "usb-flow",
+        "command": "/usr/local/bin/stop_cam2_base64.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "true",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Exec Node Stop Kamera 2",
+        "x": 520,
+        "y": 620,
+        "wires": [
+            [
+                "c193a7e1214636d9"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "289b5a2d9a655749",
+        "type": "ui_button",
+        "z": "usb-flow",
+        "name": "Start Camera2",
+        "group": "usb-group",
+        "order": 1,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "Start Camera",
+        "tooltip": "",
+        "color": "white",
+        "bgcolor": "green",
+        "className": "",
+        "icon": "play_arrow",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 120,
+        "y": 500,
+        "wires": [
+            [
+                "553880a7b23ad5f6"
+            ]
+        ]
+    },
+    {
+        "id": "2ba4ada27609b5e7",
+        "type": "ui_button",
+        "z": "usb-flow",
+        "name": "Stop Camera2",
+        "group": "usb-group",
+        "order": 2,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "Stop Camera",
+        "tooltip": "",
+        "color": "white",
+        "bgcolor": "red",
+        "className": "",
+        "icon": "stop",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 120,
+        "y": 640,
+        "wires": [
+            [
+                "2016f4513c91c999"
+            ]
+        ]
+    },
+    {
+        "id": "8ce4d7d4025d246f",
+        "type": "http in",
+        "z": "usb-flow",
+        "name": "HTTP Camera2 Stop",
+        "url": "/camera2/stop",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 110,
+        "y": 680,
+        "wires": [
+            [
+                "2016f4513c91c999"
+            ]
+        ]
+    },
+    {
+        "id": "97fc3e370d169d51",
+        "type": "http response",
+        "z": "usb-flow",
+        "name": "http response",
+        "statusCode": "200",
+        "headers": {},
+        "x": 980,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "c193a7e1214636d9",
+        "type": "http response",
+        "z": "usb-flow",
+        "name": "http response",
+        "statusCode": "200",
+        "headers": {},
+        "x": 840,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "c61e543e3d5bf9ca",
+        "type": "debug",
+        "z": "usb-flow",
+        "name": "Debug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1030,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "308fd84d629cca76",
+        "type": "http in",
+        "z": "usb-flow",
+        "name": "HTTP Camera2 Start",
+        "url": "/camera2/start",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 120,
+        "y": 460,
+        "wires": [
+            [
+                "553880a7b23ad5f6"
+            ]
+        ]
+    },
+    {
+        "id": "usb-group",
+        "type": "ui_group",
+        "name": "USB Camera",
+        "tab": "usb-tab",
+        "order": 1,
+        "width": 6
+    },
+    {
+        "id": "259d825a9e473181",
+        "type": "websocket-listener",
+        "path": "/ws/video",
+        "wholemsg": "false"
+    },
+    {
+        "id": "bc2309cc1f19922b",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "localhost",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "usb-tab",
+        "type": "ui_tab",
+        "name": "Camera Dashboard",
+        "icon": "videocam",
+        "order": 1
+    },
+    {
+        "id": "cde4b69c6fe659de",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6",
+            "node-red-contrib-multipart-stream-decoder": "1.0.0",
+            "node-red-node-base64": "1.0.0"
+        }
+    }
+]
